@@ -418,13 +418,13 @@ def thread_(ip, ports, flag=False):
 
 def parser_():
     parser = argparse.ArgumentParser(description='Port Scanner Beta v1.0')
-    parser.add_argument('ip', type=str, help='Target ip/host\n'
-                                             "[Hint]Support host like 'scanme.nmap.org'\n"
-                                             "[Hint]Support ip like '192.168.1.1'")
+    parser.add_argument('ip', type=str, help='Target ip/host. '
+                                             "Support host like 'scanme.nmap.org'"
+                                             "Support ip like '192.168.1.1'")
     parser.add_argument('-p', nargs='*',
-                        help="Custom port to scan.\n"
-                             "[Hint]'all/.' to scan full port\n"
-                             "[Hint]'1-10' to define port range")
+                        help="Custom port to scan. "
+                             "'all/.' to scan full port. "
+                             "'1-10' to define port range")
     return parser.parse_args()
 
 
