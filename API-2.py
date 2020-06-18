@@ -4,6 +4,8 @@ import threading
 import queue
 import ssl
 from time import sleep
+import argparse
+import time
 
 # for port in range(20, 1000):
 #     my_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # creating new socket type of SOCK_STREAM
@@ -20,7 +22,6 @@ DEFAULT_TIMEOUT = 5
 THREAD_COUNT = 256
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, " \
              "like Gecko) Chrome/83.0.4103.97 Safari/537.36 Edg/83.0.478.45"
-
 
 UNIQUE_NAMES = {
     b'\x00': 'Workstation Service',
@@ -56,11 +57,13 @@ lock = threading.Lock()
 
 INTERRUPT = False
 
+result = []
+
+
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> EXTRA FUNCTION <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 
 def set_data(port):
-
     return REQUEST_DATA[port]
 
 
@@ -124,7 +127,6 @@ def lib_get_http_info(rep):
 
 
 def lib_check_os_445(address, port):
-
     try:
         payload1 = \
             b'\x00\x00\x00\x85\xff\x53\x4d\x42\x72\x00\x00\x00\x00\x18\x53\xc8\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xfe\x00\x00\x00\x00\x00\x62\x00\x02\x50\x43\x20\x4e\x45\x54\x57\x4f\x52\x4b\x20\x50\x52\x4f\x47\x52\x41\x4d\x20\x31\x2e\x30\x00\x02\x4c\x41\x4e\x4d\x41\x4e\x31\x2e\x30\x00\x02\x57\x69\x6e\x64\x6f\x77\x73\x20\x66\x6f\x72\x20\x57\x6f\x72\x6b\x67\x72\x6f\x75\x70\x73\x20\x33\x2e\x31\x61\x00\x02\x4c\x4d\x31\x2e\x32\x58\x30\x30\x32\x00\x02\x4c\x41\x4e\x4d\x41\x4e\x32\x2e\x31\x00\x02\x4e\x54\x20\x4c\x4d\x20\x30\x2e\x31\x32\x00'
@@ -159,7 +161,6 @@ def lib_check_os_445(address, port):
 
 
 def check_rep(address, port, rep):
-
     if port == 137:
         return lib_nbns_rep(rep=rep)
 
@@ -174,7 +175,6 @@ def check_rep(address, port, rep):
 
 
 def extra(ip_, port):
-
     msg = ''
     temp_rep = ''
 
@@ -296,12 +296,13 @@ def to_ips(raw):
 
 
 def to_ports(raw):
+
     ports = []
 
     for item in raw:
 
         if '-' not in item:
-            if 0 <= (item := int(item)) <= 255:
+            if 0 <= (item := int(item)) <= 25565:
                 ports.append(item)
 
             else:
@@ -311,8 +312,8 @@ def to_ports(raw):
         else:
             start, end = item.split('-')
 
-            if 0 <= (start := int(start)) < 255 and 0 <= (end := int(end)) <= 255:
-                ports += range(start, end + 1)
+            if 0 <= (start := int(start)) < 25565 and 0 <= (end := int(end)) <= 25565:
+                ports += range(min(start, end), max(start, end) + 1)
 
             else:
                 print('[ERROR] Raw ports input')
@@ -322,7 +323,6 @@ def to_ports(raw):
 
 
 def scan_tcp(ip, port):
-
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     try:
@@ -335,7 +335,6 @@ def scan_tcp(ip, port):
 
 
 def scan_udp(ip, port):
-
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     s.sendto(b'test_msg', (ip, port))
@@ -349,7 +348,6 @@ def scan_udp(ip, port):
 
 
 def scanner_remote(ip, port, flag):
-
     if INTERRUPT is True:
 
         return
@@ -360,24 +358,27 @@ def scanner_remote(ip, port, flag):
 
     elif scan_tcp(ip=ip, port=port):
 
-        print(f"[+] {ip} %3d TCP OPEN" % port)
+        print(f"[+]  OPEN  {ip}  %3d TCP" % port)
 
     elif scan_udp(ip=ip, port=port):
 
-        print(f"[+] {ip} %3d UDP OPEN" % port)
+        print(f"[+] {ip} %3d UDP OPEN  UDP" % port)
 
 
 def scanner_local(ip_, port):
-
     port_type = 'tcp'
     port_type1 = 'udp'
-    
+
     try:
-        print(f"[+]  OPEN  {ip_}  %3s  {port_type}  >  {socket.getservbyport(port, port_type)}" % port)
+        res = f"[+]  OPEN  {ip_}  %3s  {port_type}  >  {socket.getservbyport(port, port_type)}" % port
+        print(res)
+        result.append(res)
 
     except:
         try:
-            print(f"[+]  OPEN  {ip_}  %3s  {port_type1}  >  {socket.getservbyport(port, port_type1)}" % port)
+            res = f"[+]  OPEN  {ip_}  %3s  {port_type1}  >  {socket.getservbyport(port, port_type1)}" % port
+            print(res)
+            result.append(res)
 
         except:
             pass
@@ -387,12 +388,14 @@ def thread_(ip, ports, flag=False):
 
     if ip.split('.')[0] == '192':
 
-        pool = [threading.Thread(target=scanner_local, args=(ip, port, )) for port in ports]
+        pool = [threading.Thread(target=scanner_local, args=(ip, port,)) for port in ports]
 
         for p in pool:
             p.start()
 
     else:
+
+        print(f'> > > > >  Target IP: {ip}')
 
         pool = [threading.Thread(target=scanner_remote, args=(ip, port, flag)) for port in ports]
 
@@ -400,14 +403,25 @@ def thread_(ip, ports, flag=False):
             p.start()
 
 
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> USER HANDLE <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+def parser_():
+    parser = argparse.ArgumentParser(description='Port Scanner Beta v1.0')
+    parser.add_argument('ip', type=str, help='Target ip/host\n'
+                                             "[Hint]Support host like 'scanme.nmap.org'\n"
+                                             "[Hint]Support ip like '192.168.1.1'")
+    parser.add_argument('-p', nargs='*',
+                        help="Custom port to scan.\n"
+                             "[Hint]'all/.' to scan full port\n"
+                             "[Hint]'1-10' to define port range")
+    return parser.parse_args()
+
+
 if __name__ == '__main__':
-    # host = 'scanme.nmap.org'
-    # host = '220.181.38.148'
-    host = '192.168.2.105'
 
-    ips = to_ips(raw=host)
-    ports_ = to_ports(raw=['0-255'])
+    args = parser_()
 
-    for ip in ips:
+    for ip in to_ips(raw=args.ip):
 
-        thread_(ip=ip, ports=ports_)
+        thread_(ip=ip, ports=to_ports(raw=args.p))
+
