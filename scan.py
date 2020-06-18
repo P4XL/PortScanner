@@ -77,7 +77,7 @@ def lib_nbns_rep(rep):
     try:
         num = ord(rep[56:57].decode())
 
-    except Exception:
+    except:
         return ''
 
     data = rep[57:]
@@ -322,11 +322,11 @@ def to_ports(raw):
     return list(set(ports))
 
 
-def scan_tcp(ip, port):
+def scan_tcp(ip_, port):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     try:
-        s.connect((ip, port))
+        s.connect((ip_, port))
         s.close()
         return True
 
@@ -334,10 +334,10 @@ def scan_tcp(ip, port):
         return False
 
 
-def scan_udp(ip, port):
+def scan_udp(ip_, port):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-    s.sendto(b'test_msg', (ip, port))
+    s.sendto(b'test_msg', (ip_, port))
 
     try:
         rep = s.recvfrom(1024)
@@ -347,22 +347,22 @@ def scan_udp(ip, port):
         return False
 
 
-def scanner_remote(ip, port, flag):
+def scanner_remote(ip_, port, flag):
     if INTERRUPT is True:
 
         return
 
     elif flag is True and port in REQUEST_DATA:
 
-        extra(ip_=ip, port=port)
+        extra(ip_=ip_, port=port)
 
-    elif scan_tcp(ip=ip, port=port):
+    elif scan_tcp(ip_=ip_, port=port):
 
-        print(f"[+]  OPEN  {ip}  %3d TCP" % port)
+        print(f"[+]  OPEN  {ip_}  %3d TCP" % port)
 
-    elif scan_udp(ip=ip, port=port):
+    elif scan_udp(ip_=ip_, port=port):
 
-        print(f"[+] {ip} %3d UDP OPEN  UDP" % port)
+        print(f"[+] {ip_} %3d UDP OPEN  UDP" % port)
 
 
 def scanner_local(ip_, port):
@@ -395,12 +395,23 @@ def thread_(ip, ports, flag=False):
 
     else:
 
-        print(f'> > > > >  Target IP: {ip}')
+        print(f'"---------> Target IP: {ip}')
+        start = time.time()
 
         pool = [threading.Thread(target=scanner_remote, args=(ip, port, flag)) for port in ports]
 
         for p in pool:
             p.start()
+
+        try:
+            while threading.active_count() > 1:
+                time.sleep(0.5)
+
+        except KeyboardInterrupt:
+            global INTERRUPT
+            INTERRUPT = True
+
+        print(f"---------> Time cost {time.time() - start}")
 
 
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> USER HANDLE <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -424,4 +435,3 @@ if __name__ == '__main__':
     for ip in to_ips(raw=args.ip):
 
         thread_(ip=ip, ports=to_ports(raw=args.p))
-
