@@ -3,6 +3,7 @@ import re
 import threading
 import queue
 import ssl
+from time import sleep
 
 # for port in range(20, 1000):
 #     my_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # creating new socket type of SOCK_STREAM
@@ -15,7 +16,7 @@ import ssl
 #         print(f'Port {port}. {e}')
 #         pass
 
-DEFAULT_TIMEOUT = 2
+DEFAULT_TIMEOUT = 5
 THREAD_COUNT = 256
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, " \
              "like Gecko) Chrome/83.0.4103.97 Safari/537.36 Edg/83.0.478.45"
@@ -241,35 +242,30 @@ def to_ips(raw):
     :return: return ip_set: [ip1, ip2, ...]
     """
 
-    is_host_name = True
+    try:
+        return [socket.gethostbyname(raw)]
 
-    if '/' in raw:
-        is_host_name = False  # is host name, not an ip address
+    except:
 
-    if is_host_name is True:
-
-        """
-        is a host name, try to return a real ip address
-        ::returns [ip]
-        """
-
-        try:
-            address = socket.gethostbyname(raw)
-            return [address]
-
-        except Exception as e:
-            print(f"[ERROR] Raw input, {e}")
+        if len(raw.split('.')) != 4:
+            print('[ERROR] Raw ip input. \nexit ...')
             exit()
-
-    else:
-
-        """
-        is real ip address
-        """
 
         if '/' in raw:
             address, mask = raw.split('/')
-            mask = int(mask)
+
+            if not (0 <= (mask := int(mask)) <= 24):
+                print('[ERROR] Raw mask input. \nexit ...')
+                exit()
+
+            for item in address.split('.'):
+                if isinstance(item, int):
+                    if not (0 <= int(item) <= 255):
+                        print('[ERROR] Raw mask input. \nexit ...')
+                        exit()
+                else:
+                    print('[ERROR] Raw ip input. \nexit ...')
+                    exit()
 
             bin_address = ''.join([(8 - len(bin(int(i))[2:])) * '0' + bin(int(i))[2:] for i in address.split('.')])
 
@@ -286,7 +282,7 @@ def to_ips(raw):
         elif '-' in raw:
             address, end = raw.split('-')
 
-            start = int(address.split['.'][3])
+            start = int(address.split('.')[3])
             end = int(end)
 
             prefix = '.'.join(address.split('.')[:-1])
@@ -322,7 +318,7 @@ def to_ports(raw):
                 print('[ERROR] Raw ports input')
                 exit()
 
-    return set(ports)
+    return list(set(ports))
 
 
 def scan_tcp(ip, port):
@@ -352,7 +348,7 @@ def scan_udp(ip, port):
         return False
 
 
-def scanner(ip, port, flag):
+def scanner_remote(ip, port, flag):
 
     if INTERRUPT is True:
 
@@ -371,12 +367,37 @@ def scanner(ip, port, flag):
         print(f"[+] {ip} %3d UDP OPEN" % port)
 
 
+def scanner_local(ip_, port):
+
+    port_type = 'tcp'
+    port_type1 = 'udp'
+    
+    try:
+        print(f"[+]  OPEN  {ip_}  %3s  {port_type}  >  {socket.getservbyport(port, port_type)}" % port)
+
+    except:
+        try:
+            print(f"[+]  OPEN  {ip_}  %3s  {port_type1}  >  {socket.getservbyport(port, port_type1)}" % port)
+
+        except:
+            pass
+
+
 def thread_(ip, ports, flag=False):
 
-    pool = [threading.Thread(target=scanner, args=(ip, port, flag)) for port in ports]
+    if ip.split('.')[0] == '192':
 
-    for p in pool:
-        p.start()
+        pool = [threading.Thread(target=scanner_local, args=(ip, port, )) for port in ports]
+
+        for p in pool:
+            p.start()
+
+    else:
+
+        pool = [threading.Thread(target=scanner_remote, args=(ip, port, flag)) for port in ports]
+
+        for p in pool:
+            p.start()
 
 
 if __name__ == '__main__':
