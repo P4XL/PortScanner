@@ -21,4 +21,6 @@ start_2: 请等待片刻
 complete_1: 扫描完成
 complete_2: 立即打开？
 
+running: 程序运行中，请等待上一个操作结束
+
 restart: Restart this program to take effect

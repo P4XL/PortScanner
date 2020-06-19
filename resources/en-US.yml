@@ -1,6 +1,6 @@
 
 #interface
-title: Port Scnner
+title: Port Scanner
 approve: Lienense
 feedback: Feedback
 language: Language
@@ -12,7 +12,7 @@ ports: Ports
 
 #Info
 
-input_invaild: Input invalid
+input_invalid: Input invalid
 
 info: Info
 warn: Warning
@@ -20,5 +20,7 @@ start_1: Start scanning...
 start_2: Please wait secondes
 complete_1: Scan completed
 complete_2: Open it now?
+
+running: Scanning, please wait until last operation done.
 
 restart: 重启程序以生效

@@ -16,25 +16,7 @@ THREAD_COUNT = 256
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, " \
              "like Gecko) Chrome/83.0.4103.97 Safari/537.36 Edg/83.0.478.45"
 
-UNIQUE_NAMES = {
-    b'\x00': 'Workstation Service',
-    b'\x03': 'Messenger Service',
-    b'\x06': 'RAS Server Service',
-    b'\x1F': 'NetDDE Service',
-    b'\x20': 'Server Service',
-    b'\x21': 'RAS Client Service',
-    b'\xBE': 'Network Monitor Agent',
-    b'\xBF': 'Network Monitor Application',
-    b'\x1D': 'Master Browser',
-    b'\x1B': 'Domain Master Browser',
-}
-
-GROUP_NAMES = {
-    b'\x00': 'Domain Name',
-    b'\x1C': 'Domain Controllers',
-    b'\x1E': 'Browser Service Elections',
-}
-
+# 构造特定端口查询时的数据
 REQUEST_DATA = {
     21: b'pwd\r\n',
     80: b'GET / HTTP/1.0\r\nUser-Agent: %s\r\nConnection: close\r\n\r\n\r\n' % USER_AGENT.encode(),
@@ -48,15 +30,19 @@ socket.setdefaulttimeout(DEFAULT_TIMEOUT)
 global_queue = queue.Queue()
 lock = threading.Lock()
 
+# 永顺终止程序
 INTERRUPT = False
 
+# 将保存的结果放在列表中，方便扫描完统一输出
 result = []
 
 
+# 设置发送的数据
 def set_data(port):
     return REQUEST_DATA[port]
 
 
+# 137/UDP 检查nbns
 def lib_nbns_rep(rep):
     """
     UDP/137
@@ -93,6 +79,7 @@ def lib_nbns_rep(rep):
     return ret
 
 
+# 80/443端口获取http内容
 def lib_get_http_info(rep):
     """
         if rep.startswith('HTTP/1.'):  # Http
@@ -116,6 +103,7 @@ def lib_get_http_info(rep):
     return ret
 
 
+# 445端口 检查开放 勘探OS
 def lib_check_os_445(address, port):
     try:
         payload1 = \
@@ -150,6 +138,7 @@ def lib_check_os_445(address, port):
         return 'Fail to detect OS ...'
 
 
+# 统一设置报文传输内容
 def check_rep(address, port, rep):
     if port == 137:
         return lib_nbns_rep(rep=rep)
@@ -164,6 +153,7 @@ def check_rep(address, port, rep):
         return rep
 
 
+# 统一调用高级功能 默认开启
 def extra(ip_, port):
     msg = ''
     temp_rep = ''
@@ -223,6 +213,7 @@ def extra(ip_, port):
         lock.release()
 
 
+# 将输入的ip做合法性检查并返回ip列表 支持掩码
 def to_ips(raw):
     """
     :param raw: accept ip as a string
@@ -278,6 +269,7 @@ def to_ips(raw):
             return [raw]
 
 
+# 将输入的ip端口格式化输出为列表 支持选择范围
 def to_ports(raw):
     ports = []
 
@@ -302,6 +294,7 @@ def to_ports(raw):
     return list(set(ports))
 
 
+# TCP扫描
 def scan_tcp(ip_, port):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -314,19 +307,23 @@ def scan_tcp(ip_, port):
         return False
 
 
+# UDP扫描
 def scan_udp(ip_, port):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     s.sendto(b'test_msg', (ip_, port))
 
     try:
+        # 有回传的报文 端口关闭
         rep = s.recvfrom(1024)
-        return True
-
-    except socket.error:
         return False
 
+    except socket.error:
+        return True
 
+
+# 没有实现穿透 区分外部主机和本地主机扫描
+# 远程扫描会主动调用以上高级方法
 def scanner_remote(ip_, port):
     if INTERRUPT is True:
         return
@@ -346,6 +343,7 @@ def scanner_remote(ip_, port):
         result.append(res)
 
 
+# 本地扫描会输出当前的端口的服务，实测socket内置的识别比较脑残，有些开放服务无法识别 好像MySQL的就无法识别
 def scanner_local(ip_, port):
     if INTERRUPT is True:
         return
@@ -366,9 +364,11 @@ def scanner_local(ip_, port):
             pass
 
 
+# 由该函数统一进行多线程扫描
 def thread_(ip, ports):
     result.append(f'[Target IP]: {ip}')
 
+    # 简单判断为本地ip 复杂的不想写了
     if ip.split('.')[0] == '192' and ip.split('.')[1] == '168':
 
         pool = [threading.Thread(target=scanner_local, args=(ip, port,)) for port in ports]
@@ -376,6 +376,7 @@ def thread_(ip, ports):
         for p in pool:
             p.start()
 
+    # 远程主机
     else:
 
         pool = [threading.Thread(target=scanner_remote, args=(ip, port)) for port in ports]
@@ -393,8 +394,8 @@ class GUI(object):
 
         self.on_running = False
 
-        self.language = self.load_language()
-        self.config = self.load_config()
+        self.language = self.load_language()  # 加载默认语言
+        self.config = self.load_config()  # 加载语言配置文件
 
         self.window_width = 335
         self.window_height = 206
@@ -431,7 +432,14 @@ class GUI(object):
                                  relief='flat', command=lambda: self.thread_event(self.get_input))
         self.confirm.pack(side='bottom', ipadx=0, fill='x')
 
+    # 按下扫描以进行获取输入并做检测，然后提交扫描
     def get_input(self):
+
+        if self.on_running is True:
+
+            messagebox.showinfo(f"{self.config['info']}", f"{self.config['running']}")
+
+            return
 
         hosts = self.hosts.get()
         ports = self.ports.get()
@@ -458,6 +466,8 @@ class GUI(object):
             messagebox.showinfo(f"{self.config['info']}",
                                 f"{self.config['start_1']}\n{self.config['start_2']}")
 
+            self.on_running = True
+
             for ip in hosts:
                 thread_(ip=ip, ports=ports)
 
@@ -472,10 +482,13 @@ class GUI(object):
 
                         startfile('result.txt')
 
+                    self.on_running = False
+
                     break
 
                 time.sleep(0.5)
 
+    # 程序的菜单选项
     def menu(self):
 
         menu_bar = tk.Menu(self.root)
@@ -498,6 +511,7 @@ class GUI(object):
         menu_bar.add_cascade(label=self.config['help'], menu=help_bar)
         # menu_bar.add_cascade(label=self.config['quit'], menu=quit_bar)
 
+    # 按下菜单的英文 语言切换到英文
     def language_switch_en_us(self):
 
         target_config_dict = {'language': 'en-US'}
@@ -511,6 +525,7 @@ class GUI(object):
 
             messagebox.showinfo(f"{self.config['info'] :}", f"{self.config['restart']}")
 
+    # 按下菜单的中文 语言切换到中文
     def language_switch_zh_cn(self):
 
         target_config_dict = {'language': 'zh-CN'}
@@ -524,6 +539,7 @@ class GUI(object):
 
             messagebox.showinfo('Info', 'Restart this program to take effect')
 
+    # 加载语言选项文件
     def load_config(self):
 
         f_config = open(f'resources/{self.language}.yml', 'r', encoding='utf-8')
@@ -534,6 +550,7 @@ class GUI(object):
 
         return config_
 
+    # 加载界面语言文件
     @staticmethod
     def load_language():
 
@@ -545,6 +562,7 @@ class GUI(object):
 
         return config_['language']
 
+    # 将结果保存到txt以查看
     @staticmethod
     def save_to_doc():
 
@@ -566,6 +584,7 @@ class GUI(object):
 
         f_old.close()
 
+    # 用于守护线程 防止按下按钮导致界面阻塞
     @staticmethod
     def thread_event(func):
 
