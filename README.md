@@ -56,3 +56,4 @@
 > - Released     1.0.0    :  Adjust program's structure.
 > - Released     1.0.1    :  Improve stability and performance.
 > - Released     1.1.0    :  Support switch language [zh-hans / en-us]
+> - Released     1.2.0    :  Add commit
