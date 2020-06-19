@@ -1,0 +1,24 @@
+
+#interface
+title: 端口扫描
+approve: 许可
+feedback: 反馈
+language: 语言
+help: 帮助
+quit: 退出
+
+hosts: 主机
+ports: 端口
+
+#Info
+
+input_invaild: 输入非法
+
+info: 帮助
+warn: 警告
+start_1: 即将开始扫描...
+start_2: 请等待片刻
+complete_1: 扫描完成
+complete_2: 立即打开？
+
+restart: Restart this program to take effect

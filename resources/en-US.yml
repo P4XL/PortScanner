@@ -1,0 +1,24 @@
+
+#interface
+title: Port Scnner
+approve: Lienense
+feedback: Feedback
+language: Language
+help: Help
+quit: Quit
+
+hosts: Hosts
+ports: Ports
+
+#Info
+
+input_invaild: Input invalid
+
+info: Info
+warn: Warning
+start_1: Start scanning...
+start_2: Please wait secondes
+complete_1: Scan completed
+complete_2: Open it now?
+
+restart: 重启程序以生效

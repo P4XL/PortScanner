@@ -7,6 +7,7 @@ import queue
 import ssl
 import time
 from os import startfile
+from ruamel import yaml
 
 # >>>>>>>>>>>>>>>>>>>>>>>>> Port Scanner <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
@@ -327,7 +328,6 @@ def scan_udp(ip_, port):
 
 
 def scanner_remote(ip_, port):
-
     if INTERRUPT is True:
         return
 
@@ -347,7 +347,6 @@ def scanner_remote(ip_, port):
 
 
 def scanner_local(ip_, port):
-
     if INTERRUPT is True:
         return
 
@@ -368,7 +367,6 @@ def scanner_local(ip_, port):
 
 
 def thread_(ip, ports):
-
     result.append(f'[Target IP]: {ip}')
 
     if ip.split('.')[0] == '192' and ip.split('.')[1] == '168':
@@ -376,7 +374,6 @@ def thread_(ip, ports):
         pool = [threading.Thread(target=scanner_local, args=(ip, port,)) for port in ports]
 
         for p in pool:
-
             p.start()
 
     else:
@@ -395,13 +392,17 @@ class GUI(object):
     def __init__(self):
 
         self.on_running = False
+
+        self.language = self.load_language()
+        self.config = self.load_config()
+
         self.window_width = 335
         self.window_height = 206
 
         self.root = tk.Tk()
 
         self.root.geometry(f'{self.window_width}x{self.window_height}+540+250')
-        self.root.title('Port Scanner v1.0 Beta')
+        self.root.title(f"{self.config['title']} v1.1.0")
         self.root.iconbitmap('.\\images\\icon.ico')
         self.root.resizable(width=False, height=False)
 
@@ -415,18 +416,18 @@ class GUI(object):
 
         # HOSTS
         tk.Canvas(bd=2, relief='groove', width=300, height=46, ).place(x=15, y=20)
-        tk.Label(text='Hosts :', font=('Microsoft YaHei', 10)).place(x=25, y=34)
+        tk.Label(text=f"{self.config['hosts']} :", font=('Microsoft YaHei', 10)).place(x=25, y=34)
         self.hosts = tk.Entry(bd=1, font=('Microsoft YaHei', 10), relief='groove', width=27)
         self.hosts.place(x=80, y=36)
 
         # Ports
         tk.Canvas(bd=2, relief='groove', width=300, height=46, ).place(x=15, y=80)
-        tk.Label(text='Ports :', font=('Microsoft YaHei', 10)).place(x=25, y=94)
+        tk.Label(text=f"{self.config['ports']} :", font=('Microsoft YaHei', 10)).place(x=25, y=94)
         self.ports = tk.Entry(bd=1, font=('Microsoft YaHei', 10), relief='groove', width=27)
         self.ports.place(x=80, y=96)
 
         # Button
-        self.confirm = tk.Button(text='Port Scanner', height=1, font=('Microsoft YaHei', 18),
+        self.confirm = tk.Button(text=f"{self.config['title']}", height=1, font=('Microsoft YaHei', 18),
                                  relief='flat', command=lambda: self.thread_event(self.get_input))
         self.confirm.pack(side='bottom', ipadx=0, fill='x')
 
@@ -436,26 +437,26 @@ class GUI(object):
         ports = self.ports.get()
 
         if hosts == '' or ports == '':
-            messagebox.showwarning('Info', 'Void input')
+            messagebox.showwarning(f"{self.config['info']}", f"{self.config['input_invalid']}")
 
         else:
 
             ports = [port for port in ports.replace(' ', '').split(',')]
 
             if (hosts := to_ips(raw=hosts)) is None:
-                messagebox.showwarning('Info', 'Invalid Hosts')
+                messagebox.showwarning(f"{self.config['info']}", f"{self.config['input_invalid']}")
                 return
 
             try:
                 if (ports := to_ports(raw=ports)) is None:
-                    messagebox.showwarning('Info', 'Invalid Ports')
+                    messagebox.showwarning(f"{self.config['info']}", f"{self.config['input_invalid']}")
 
             except ValueError:
-                messagebox.showwarning('Info', 'Invalid Ports')
+                messagebox.showwarning(f"{self.config['info']}", f"{self.config['input_invalid']}")
                 return
 
-            messagebox.showinfo('Info', 'Start Scanning...\n'
-                                        'Please wait a second')
+            messagebox.showinfo(f"{self.config['info']}",
+                                f"{self.config['start_1']}\n{self.config['start_2']}")
 
             for ip in hosts:
                 thread_(ip=ip, ports=ports)
@@ -466,8 +467,9 @@ class GUI(object):
 
                     self.save_to_doc()
 
-                    if messagebox.askokcancel('Info', 'Scanning Completed.\n'
-                                                   'Open it now?'):
+                    if messagebox.askokcancel(f"{self.config['info']}",
+                                              f"{self.config['complete_1']}\n{self.config['complete_2']}"):
+
                         startfile('result.txt')
 
                     break
@@ -480,18 +482,68 @@ class GUI(object):
         self.root.config(menu=menu_bar)
 
         lang_bar = tk.Menu(menu_bar, tearoff=0)
-        lang_bar.add_command(label='English')
-        lang_bar.add_command(label='Chinese')
+        lang_bar.add_command(label='English', command=self.language_switch_en_us)
+        lang_bar.add_command(label='中文', command=self.language_switch_zh_cn)
 
         help_bar = tk.Menu(menu_bar, tearoff=0)
-        help_bar.add_command(label='Approve')
-        help_bar.add_command(label='Github')
+        help_bar.add_command(label=self.config['approve'])
+        help_bar.add_command(label=self.config['feedback'])
 
-        quit_bar = tk.Menu(menu_bar, tearoff=0)
+        approve_bar = tk.Menu(help_bar, tearoff=0)
+        approve_bar.add_cascade(label=self.config['approve'])
 
-        menu_bar.add_cascade(label='Language', menu=lang_bar)
-        menu_bar.add_cascade(label='Help', menu=help_bar)
-        menu_bar.add_cascade(label='Quit', menu=quit_bar)
+        # quit_bar = tk.Menu(menu_bar, tearoff=0)
+
+        menu_bar.add_cascade(label=self.config['language'], menu=lang_bar)
+        menu_bar.add_cascade(label=self.config['help'], menu=help_bar)
+        # menu_bar.add_cascade(label=self.config['quit'], menu=quit_bar)
+
+    def language_switch_en_us(self):
+
+        target_config_dict = {'language': 'en-US'}
+
+        if self.language != 'en-US':
+            f_lang = open('config.yml', 'w+', encoding='utf-8')
+
+            yaml.dump(target_config_dict, f_lang, Dumper=yaml.RoundTripDumper)
+
+            f_lang.close()
+
+            messagebox.showinfo(f"{self.config['info'] :}", f"{self.config['restart']}")
+
+    def language_switch_zh_cn(self):
+
+        target_config_dict = {'language': 'zh-CN'}
+
+        if self.language != 'zh-CN':
+            f_lang = open('config.yml', 'w+', encoding='utf-8')
+
+            yaml.dump(target_config_dict, f_lang, Dumper=yaml.RoundTripDumper)
+
+            f_lang.close()
+
+            messagebox.showinfo('Info', 'Restart this program to take effect')
+
+    def load_config(self):
+
+        f_config = open(f'resources/{self.language}.yml', 'r', encoding='utf-8')
+
+        config_ = yaml.load(f_config.read(), Loader=yaml.SafeLoader)
+
+        f_config.close()
+
+        return config_
+
+    @staticmethod
+    def load_language():
+
+        f_lang = open('config.yml', 'r', encoding='utf-8')
+
+        config_ = yaml.load(f_lang.read(), Loader=yaml.SafeLoader)
+
+        f_lang.close()
+
+        return config_['language']
 
     @staticmethod
     def save_to_doc():
