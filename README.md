@@ -4,12 +4,12 @@
 
 ## 🚀 Usage
 
-> ```python
-> python .\scan.py [target_ip] [-args|-args]  # Run with CLI
+> ```bash
+> python .\PortScanner_GUI.py [target_ip] [-args|-args]  # Run with CLI
 > ```
 
->```python
->python .\gui.py  # Enter gui mode, data will be saved in ./result.txt
+>```bash
+>python .\PortScanner-CLI.py  # Enter gui mode, data will be saved in ./result.txt
 >```
 
 > ```
